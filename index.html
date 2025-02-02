@@ -390,7 +390,7 @@
             }
           }
           singleBlockCount = counts.filter(c => c === 1).length;
-        } while (res.count !== 1 || singleBlockCount > 2);
+        } while (res.count !== 1 || singleBlockCount > 1);
         createBoard(gameData);
         document.getElementById("message").textContent = "";
         startTime = new Date();
