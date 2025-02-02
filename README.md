@@ -3,7 +3,7 @@
 Practice the LinkedIn game without limits!
 
 ## Features ✨
-- **Custom grid size** (4x4 to 11x11)
+- **Custom grid size** (4x4 to 10x10)
 - **Smart hints** when stuck
 - Automatic ✕ placement
 
