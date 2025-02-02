@@ -20,7 +20,7 @@
 </head>
 <body>
   <h1>Crown Puzzle</h1>
-  Size: <input type="number" id="size" value="8" min="4" max="12">
+  Size: <input type="number" id="size" value="8" min="4" max="11">
   <button id="newGame">New Game</button>
   <button id="showSolution">Show Solution</button>
   <button id="hintButton">Hint [✨]</button>
@@ -46,9 +46,11 @@
       });
     }
     function updateTimer() {
-      let diff = Math.floor((new Date() - startTime) / 1000);
-      document.getElementById("timer").textContent = "Time: " + diff + "s";
-    }
+    let diff = Math.floor((new Date() - startTime) / 1000);
+    let minutes = Math.floor(diff / 60);
+    let seconds = diff % 60;
+    document.getElementById("timer").textContent = `Time: ${minutes}m ${seconds}s`;
+    }  
     // Generates a valid crown placement (one per row/column, adjacent crowns at least 2 apart)
     function generateCrownPlacement(n) {
       const sol = Array(n).fill(null);
