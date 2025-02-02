@@ -203,6 +203,7 @@
       const n = table.rows.length;
       const r = parseInt(crownCell.dataset.row);
       const c = parseInt(crownCell.dataset.col);
+      const color = crownCell.dataset.letter;
       for(let j = 0; j < n; j++){
         if(j !== c) {
           let cell = table.rows[r].cells[j];
