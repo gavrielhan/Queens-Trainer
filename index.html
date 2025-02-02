@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Crown Puzzle</title>
+  <style>
+    body { font-family: sans-serif; }
+    table { border-collapse: collapse; margin-top: 10px; }
+    td {
+      width: 40px; height: 40px; text-align: center; vertical-align: middle;
+      border: 2px solid #000; font-size: 24px; cursor: pointer;
+    }
+    #message { font-size: 24px; color: green; margin-top: 10px; }
+    #timer { font-size: 20px; margin-top: 10px; }
+    #loading {
+      display: none; font-size: 24px; color: #555;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Crown Puzzle</h1>
+  Size: <input type="number" id="size" value="8" min="4" max="12">
+  <button id="newGame">New Game</button>
+  <button id="showSolution">Show Solution</button>
+  <button id="hintButton">Hint [✨]</button>
+  <button id="undoButton">Undo</button>
+  <div id="message"></div>
+  <div id="timer"></div>
+  <div id="loading">Loading…</div>
+  <div id="board"></div>
+  <script>
+  (function(){
+    let moveHistory = [];
+    let currentMoveChanges = [];
+    let timerInterval = null;
+    let startTime = null;
+    let gameData = null;
+
+    function recordCellChange(cell) {
+      currentMoveChanges.push({
+        cell: cell,
+        oldState: cell.dataset.state,
+        oldText: cell.textContent,
+        oldOutline: cell.style.outline
+      });
+    }
+    function updateTimer() {
+      let diff = Math.floor((new Date() - startTime) / 1000);
+      document.getElementById("timer").textContent = "Time: " + diff + "s";
+    }
+    // Generates a valid crown placement (one per row/column, adjacent crowns at least 2 apart)
+    function generateCrownPlacement(n) {
+      const sol = Array(n).fill(null);
+      const used = Array(n).fill(false);
+      function backtrack(r) {
+        if(r === n) return true;
+        let cols = [...Array(n).keys()];
+        cols.sort(() => Math.random()-0.5);
+        for(let c of cols) {
+          if(used[c]) continue;
+          if(r && Math.abs(sol[r-1]-c) < 2) continue;
+          sol[r] = c;
+          used[c] = true;
+          if(backtrack(r+1)) return true;
+          used[c] = false;
+        }
+        return false;
+      }
+      backtrack(0);
+      return sol;
+    }
+    // Randomized multi–source BFS to assign each cell to a region (seeded by the crown)
+    function assignRegions(n, crowns) {
+      let regions = Array.from({length: n}, () => Array(n).fill(-1));
+      let queue = [];
+      for(let r=0; r<n; r++){
+        let c = crowns[r];
+        regions[r][c] = r;
+        queue.push({r, c, seed: r});
+      }
+      const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+      while(queue.length) {
+        const idx = Math.floor(Math.random()*queue.length);
+        let {r, c, seed} = queue.splice(idx, 1)[0];
+        let drs = dirs.slice();
+        drs.sort(() => Math.random()-0.5);
+        for(let [dr, dc] of drs) {
+          let nr = r + dr, nc = c + dc;
+          if(nr >= 0 && nr < n && nc >= 0 && nc < n && regions[nr][nc] === -1) {
+            regions[nr][nc] = seed;
+            queue.push({r: nr, c: nc, seed});
+          }
+        }
+      }
+      return regions;
+    }
+    // Returns an object with grid, solution and raw regions.
+    function generateGame(n) {
+      const crowns = generateCrownPlacement(n);
+      const regions = assignRegions(n, crowns);
+      const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+      let grid = [];
+      for(let i=0; i<n; i++){
+        let row = "";
+        for(let j=0; j<n; j++){
+          row += letters[ regions[i][j] % letters.length ];
+        }
+        grid.push(row);
+      }
+      return { grid, solution: crowns, regions: regions };
+    }
+    // Backtracking solver (using region letters) to count solutions.
+    function solvePuzzle(grid) {
+      const n = grid.length;
+      let solutions = 0;
+      let sol = [];
+      let usedCols = Array(n).fill(false);
+      let usedRegion = {};
+      function backtrack(row, crownPositions) {
+        if(row === n) {
+          solutions++;
+          sol = crownPositions.slice();
+          return;
+        }
+        for(let col = 0; col < n; col++){
+          if(usedCols[col]) continue;
+          let region = grid[row][col];
+          if(usedRegion[region]) continue;
+          let valid = true;
+          for(let r = 0; r < crownPositions.length; r++){
+            if(Math.abs(row - r) <= 1 && Math.abs(col - crownPositions[r]) <= 1) {
+              valid = false; break;
+            }
+          }
+          if(!valid) continue;
+          usedCols[col] = true;
+          usedRegion[region] = true;
+          crownPositions.push(col);
+          backtrack(row+1, crownPositions);
+          crownPositions.pop();
+          usedCols[col] = false;
+          usedRegion[region] = false;
+          if(solutions > 1) return;
+        }
+      }
+      backtrack(0, []);
+      return { count: solutions, solution: sol };
+    }
+    function createBoard(gameData) {
+      const n = gameData.grid.length;
+      const container = document.getElementById("board");
+      container.innerHTML = "";
+      const mapping = {
+        A:"#e41a1c", B:"#377eb8", C:"#4daf4a", D:"#984ea3", E:"#ff7f00",
+        F:"#ffff33", G:"#a65628", H:"#f781bf", I:"#999999", J:"#66c2a5",
+        K:"#fc8d62", L:"#8da0cb", M:"#e78ac3", N:"#a6d854", O:"#ffd92f",
+        P:"#e5c494", Q:"#b3b3b3", R:"#1f78b4", S:"#33a02c", T:"#e31a1c",
+        U:"#ff7f00", V:"#6a3d9a", W:"#b15928", X:"#a6cee3", Y:"#b2df8a", Z:"#fb9a99"
+      };
+      const table = document.createElement("table");
+      for(let i=0; i<n; i++){
+        const tr = document.createElement("tr");
+        for(let j=0; j<n; j++){
+          const td = document.createElement("td");
+          const letter = gameData.grid[i][j];
+          td.style.backgroundColor = mapping[letter] || "#fff";
+          td.dataset.row = i;
+          td.dataset.col = j;
+          td.dataset.state = "";
+          td.dataset.letter = letter;
+          td.addEventListener("click", cellClick);
+          tr.appendChild(td);
+        }
+        table.appendChild(tr);
+      }
+      container.appendChild(table);
+    }
+    function cellClick(e) {
+      currentMoveChanges = [];
+      const cell = e.currentTarget;
+      removeAllHints();
+      recordCellChange(cell);
+      const state = cell.dataset.state;
+      if(state === "") {
+        cell.dataset.state = "cross";
+        cell.textContent = "✕";
+      } else if(state === "cross") {
+        cell.dataset.state = "crown";
+        cell.textContent = "👑";
+        markCells(cell);
+        checkSolution();
+      } else {
+        cell.dataset.state = "";
+        cell.textContent = "";
+      }
+      moveHistory.push(currentMoveChanges);
+    }
+    function markCells(crownCell) {
+      const table = document.querySelector("table");
+      const n = table.rows.length;
+      const r = parseInt(crownCell.dataset.row);
+      const c = parseInt(crownCell.dataset.col);
+      for(let j = 0; j < n; j++){
+        if(j !== c) {
+          let cell = table.rows[r].cells[j];
+          if(cell.dataset.state !== "crown") {
+            recordCellChange(cell);
+            cell.dataset.state = "cross";
+            cell.textContent = "✕";
+          }
+        }
+      }
+      for(let i = 0; i < n; i++){
+        if(i !== r) {
+          let cell = table.rows[i].cells[c];
+          if(cell.dataset.state !== "crown") {
+            recordCellChange(cell);
+            cell.dataset.state = "cross";
+            cell.textContent = "✕";
+          }
+        }
+      }
+      const diag = [[-1,-1], [-1,1], [1,-1], [1,1]];
+      for(let [dr, dc] of diag){
+        let nr = r + dr, nc = c + dc;
+        if(nr >= 0 && nr < n && nc >= 0 && nc < n) {
+          let cell = table.rows[nr].cells[nc];
+          if(cell.dataset.state !== "crown") {
+            recordCellChange(cell);
+            cell.dataset.state = "cross";
+            cell.textContent = "✕";
+          }
+        }
+      }
+    }
+    function removeAllHints() {
+      document.querySelectorAll("td").forEach(cell => cell.style.outline = "");
+    }
+    function checkSolution() {
+      const table = document.querySelector("table");
+      const n = table.rows.length;
+      let crownCount = 0;
+      let board = [];
+      for(let i = 0; i < n; i++){
+        board.push([]);
+        for(let j = 0; j < n; j++){
+          const cell = table.rows[i].cells[j];
+          const isCrown = (cell.dataset.state === "crown");
+          board[i][j] = isCrown ? 1 : 0;
+          if(isCrown) crownCount++;
+        }
+      }
+      if(crownCount !== n) { document.getElementById("message").textContent = ""; return; }
+      let valid = true;
+      for(let i = 0; i < n; i++){
+        if(board[i].reduce((a, b) => a + b, 0) !== 1) valid = false;
+      }
+      for(let j = 0; j < n; j++){
+        let sum = 0;
+        for(let i = 0; i < n; i++) sum += board[i][j];
+        if(sum !== 1) valid = false;
+      }
+      let regionCount = {};
+      for(let i = 0; i < n; i++){
+        for(let j = 0; j < n; j++){
+          const cell = table.rows[i].cells[j];
+          if(cell.dataset.state === "crown") {
+            const letter = cell.dataset.letter;
+            regionCount[letter] = (regionCount[letter] || 0) + 1;
+          }
+        }
+      }
+      for(let k in regionCount) {
+        if(regionCount[k] !== 1) valid = false;
+      }
+      const dirs = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+      for(let i = 0; i < n; i++){
+        for(let j = 0; j < n; j++){
+          if(board[i][j] === 1) {
+            for(let [dr, dc] of dirs) {
+              const ni = i + dr, nj = j + dc;
+              if(ni >= 0 && ni < n && nj >= 0 && nj < n && board[ni][nj] === 1) valid = false;
+            }
+          }
+        }
+      }
+      if(valid) {
+        document.getElementById("message").textContent = "Solved!";
+        clearInterval(timerInterval);
+      } else {
+        document.getElementById("message").textContent = "";
+      }
+    }
+    function showSolution() {
+      const table = document.querySelector("table");
+      const n = table.rows.length;
+      for(let i = 0; i < n; i++){
+        const solCol = gameData.solution[i];
+        const cell = table.rows[i].cells[solCol];
+        recordCellChange(cell);
+        cell.textContent = "👑";
+        cell.style.outline = "3px solid lime";
+      }
+    }
+    function getHint() {
+      const table = document.querySelector("table");
+      const n = table.rows.length;
+      removeAllHints();
+      for(let i = 0; i < n; i++){
+        let candidates = [];
+        for(let j = 0; j < n; j++){
+          const cell = table.rows[i].cells[j];
+          if(cell.dataset.state !== "cross" && cell.dataset.state !== "crown") {
+            candidates.push(cell);
+          }
+        }
+        if(candidates.length === 1) {
+          candidates[0].style.outline = "3px solid orange";
+          return;
+        }
+      }
+      for(let j = 0; j < n; j++){
+        let candidates = [];
+        for(let i = 0; i < n; i++){
+          const cell = table.rows[i].cells[j];
+          if(cell.dataset.state !== "cross" && cell.dataset.state !== "crown") {
+            candidates.push(cell);
+          }
+        }
+        if(candidates.length === 1) {
+          candidates[0].style.outline = "3px solid orange";
+          return;
+        }
+      }
+      let regions = {};
+      for(let i = 0; i < n; i++){
+        for(let j = 0; j < n; j++){
+          const cell = table.rows[i].cells[j];
+          const letter = cell.dataset.letter;
+          if(!regions[letter]) regions[letter] = [];
+          if(cell.dataset.state !== "cross" && cell.dataset.state !== "crown") {
+            regions[letter].push(cell);
+          }
+        }
+      }
+      for(let letter in regions){
+        if(regions[letter].length === 1) {
+          regions[letter][0].style.outline = "3px solid orange";
+          return;
+        }
+      }
+      let unsolved = [];
+      for(let i = 0; i < n; i++){
+        const solCol = gameData.solution[i];
+        const cell = table.rows[i].cells[solCol];
+        if(cell.dataset.state !== "crown") unsolved.push(cell);
+      }
+      if(unsolved.length > 0) {
+        unsolved[Math.floor(Math.random()*unsolved.length)].style.outline = "3px solid orange";
+      }
+    }
+    function undoMove() {
+      if(moveHistory.length === 0) return;
+      const lastMove = moveHistory.pop();
+      lastMove.reverse().forEach(change => {
+        change.cell.dataset.state = change.oldState;
+        change.cell.textContent = change.oldText;
+        change.cell.style.outline = change.oldOutline;
+      });
+      removeAllHints();
+      checkSolution();
+    }
+    function newGame() {
+      if(timerInterval) clearInterval(timerInterval);
+      moveHistory = [];
+      document.getElementById("loading").style.display = "block";
+      let n = parseInt(document.getElementById("size").value) || 8;
+      setTimeout(() => {
+        let res, singleBlockCount;
+        do {
+          gameData = generateGame(n);
+          res = solvePuzzle(gameData.grid);
+          let counts = Array(n).fill(0);
+          for(let i = 0; i < n; i++){
+            for(let j = 0; j < n; j++){
+              counts[ gameData.regions[i][j] ]++;
+            }
+          }
+          singleBlockCount = counts.filter(c => c === 1).length;
+        } while (res.count !== 1 || singleBlockCount > 2);
+        createBoard(gameData);
+        document.getElementById("message").textContent = "";
+        startTime = new Date();
+        timerInterval = setInterval(updateTimer, 1000);
+        document.getElementById("timer").textContent = "Time: 0s";
+        document.getElementById("loading").style.display = "none";
+      }, 10);
+    }
+    document.getElementById("newGame").addEventListener("click", newGame);
+    document.getElementById("showSolution").addEventListener("click", showSolution);
+    document.getElementById("hintButton").addEventListener("click", getHint);
+    document.getElementById("undoButton").addEventListener("click", undoMove);
+    window.onload = newGame;
+  })();
+  </script>
+</body>
+</html>
