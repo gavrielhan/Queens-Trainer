@@ -24,8 +24,8 @@ Practice the LinkedIn game without limits!
 | Undo           | Reverse last action             |
 
 ## Rules ⚠️
-❌ Exactly one crown in same row/column  
-❌ Exactly one crown in same colored region  
+✅ Exactly one crown in same row/column  
+✅ Exactly one crown in same colored region  
 ❌ No adjacent/diagonal crowns  
 
 Built with vanilla JS/HTML/CSS - no frameworks required!
