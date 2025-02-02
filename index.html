@@ -4,18 +4,80 @@
   <meta charset="UTF-8">
   <title>Crown Puzzle</title>
   <style>
-    body { font-family: sans-serif; }
-    table { border-collapse: collapse; margin-top: 10px; }
-    td {
-      width: 40px; height: 40px; text-align: center; vertical-align: middle;
-      border: 2px solid #000; font-size: 24px; cursor: pointer;
-    }
-    #message { font-size: 24px; color: green; margin-top: 10px; }
-    #timer { font-size: 20px; margin-top: 10px; }
-    #loading {
-      display: none; font-size: 24px; color: #555;
-      margin-top: 20px;
-    }
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
+
+body {
+    font-family: 'Poppins', sans-serif;
+    text-align: center;
+    background-color: #f4f4f4;
+    padding: 20px;
+}
+
+h1 {
+    font-size: 32px;
+    color: #333;
+    margin-bottom: 10px;
+}
+
+button {
+    background: linear-gradient(135deg, #ff7eb3, #ff758c);
+    border: none;
+    color: white;
+    padding: 10px 16px;
+    font-size: 16px;
+    border-radius: 25px;
+    cursor: pointer;
+    margin: 5px;
+    transition: 0.3s;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+button:hover {
+    transform: scale(1.05);
+    box-shadow: 0px 6px 12px rgba(0, 0, 0, 0.3);
+}
+
+#board {
+    margin: 20px auto;
+    display: inline-block;
+}
+
+table {
+    border-collapse: collapse;
+    background: white;
+    box-shadow: 0px 5px 15px rgba(0, 0, 0, 0.2);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+td {
+    width: 50px;
+    height: 50px;
+    text-align: center;
+    font-size: 24px;
+    cursor: pointer;
+    transition: 0.3s;
+    border: 2px solid #ddd;
+    font-weight: 600;
+}
+
+td:hover {
+    transform: scale(1.1);
+    background-color: rgba(255, 120, 150, 0.3);
+}
+
+#message {
+    font-size: 22px;
+    font-weight: 600;
+    color: green;
+    margin-top: 10px;
+}
+
+#timer {
+    font-size: 20px;
+    font-weight: 500;
+    margin-top: 10px;
+}
   </style>
 </head>
 <body>
