@@ -235,6 +235,16 @@
           }
         }
       }
+      for (let i = 0; i < n; i++) {
+        for (let j = 0; j < n; j++) {
+          let cell = table.rows[i].cells[j];
+          if (cell.dataset.letter === color && cell.dataset.state !== "crown") {
+            recordCellChange(cell);
+            cell.dataset.state = "cross";
+            cell.textContent = "✕";
+          }
+        }
+      }
     }
     function removeAllHints() {
       document.querySelectorAll("td").forEach(cell => cell.style.outline = "");
